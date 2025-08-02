@@ -1,8 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { Smartphone } from 'lucide-react';
 import LanguageSwitcher from '../ui/LanguageSwitcher';
+import Icon from '../../assets/icon.svg';
 
 interface HeaderProps {
   currentPage: string;
@@ -31,7 +31,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage }) => {
           onClick={() => setCurrentPage('home')}
         >
           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 border-3 border-black flex items-center justify-center">
-            <Smartphone className="w-6 h-6 text-white" />
+            <img src={Icon} className="w-8 h-8" alt="Logo" />
           </div>
           <span className="text-2xl font-black tracking-tight">ELIDU</span>
         </motion.div>

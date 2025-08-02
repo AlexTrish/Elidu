@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { Smartphone, Mail, Github } from 'lucide-react';
+import { Mail, Github } from 'lucide-react';
+import Icon from '../../assets/icon.svg';
 
 const Footer: React.FC = () => {
   const { t } = useTranslation();
@@ -79,8 +80,8 @@ const Footer: React.FC = () => {
             viewport={{ once: true }}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 border-3 border-white flex items-center justify-center">
-                <Smartphone className="w-6 h-6 text-white" />
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 border-3 border-black flex items-center justify-center">
+                <img src={Icon} className="w-8 h-8" alt="Logo" />
               </div>
               <span className="text-2xl font-black tracking-tight">ELIDU</span>
             </div>

@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { Smartphone, Users, TrendingUp, Building } from 'lucide-react';
+import { Users, TrendingUp, Building } from 'lucide-react';
+import Icon from '../../assets/icon.svg';
 import Button from '../ui/Button';
 
 const Hero: React.FC = () => {
@@ -126,7 +127,9 @@ const Hero: React.FC = () => {
               >
                 <div className="bg-white rounded-2xl p-6 space-y-4">
                   <div className="flex items-center gap-3 mb-6">
-                    <Smartphone className="w-8 h-8 text-blue-500" />
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 border-3 border-black flex items-center justify-center">
+                      <img src={Icon} className="w-8 h-8" alt="Logo" />
+                    </div>
                     <span className="text-xl font-black">ELIDU</span>
                   </div>
                   
