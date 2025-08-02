@@ -30,7 +30,7 @@ const Hero: React.FC = () => {
   ];
 
   return (
-    <section className="min-h-screen bg-gradient-to-br from-yellow-300 via-pink-300 to-blue-300 flex items-center justify-center relative overflow-hidden">
+    <section className="min-h-screen w-full bg-gradient-to-br from-yellow-300 via-pink-300 to-blue-300 flex items-center justify-center relative overflow-hidden">
       {/* Decorative elements */}
       <div className="absolute inset-0">
         {[...Array(20)].map((_, i) => (

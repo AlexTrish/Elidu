@@ -8,7 +8,7 @@ const CTA: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <section className="py-20 bg-gradient-to-r from-green-300 via-yellow-300 to-pink-300 relative overflow-hidden">
+    <section className="py-20 w-full bg-gradient-to-r from-green-300 via-yellow-300 to-pink-300 relative overflow-hidden">
       {/* Animated background elements */}
       <div className="absolute inset-0">
         {[...Array(15)].map((_, i) => (
