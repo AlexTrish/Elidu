@@ -5,10 +5,11 @@ import Home from './pages/Home';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import { AnimatePresence, motion } from 'framer-motion';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import './i18n';
 
-function App() {
-  const [currentPage, setCurrentPage] = useState('home');
+function AnimatedRoutes() {
+  const location = useLocation();
   const { i18n } = useTranslation();
   const [langTransitionKey, setLangTransitionKey] = useState(0);
   const [isLangChanging, setIsLangChanging] = useState(false);
@@ -86,16 +87,14 @@ function App() {
     },
   };
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'privacy':
-        return <PrivacyPolicy />;
-      case 'terms':
-        return <TermsOfService />;
-      default:
-        return <Home />;
-    }
+  // Определяем тип страницы для анимации
+  const getPageType = () => {
+    if (location.pathname === '/privacy') return 'privacy';
+    if (location.pathname === '/terms') return 'terms';
+    return 'home';
   };
+
+  const pageType = getPageType();
 
   return (
     <div className="min-h-screen bg-black relative">
@@ -107,27 +106,25 @@ function App() {
           exit={{ opacity: 0, y: -100, transition: { duration: 1.2, ease: [0.4, 0, 0.2, 1] } }}
           className="z-50 relative"
         >
-          <Header currentPage={currentPage} setCurrentPage={setCurrentPage} />
+          <Header />
         </motion.div>
       </AnimatePresence>
       <main>
         <AnimatePresence mode="wait">
           <motion.div
-            key={currentPage + '-' + langTransitionKey}
-            variants={{
-              initial: { opacity: 0, y: 120, scale: 0.95 },
-              animate: { opacity: 1, y: 0, scale: 1, transition: { duration: 1.2, ease: [0.4, 0, 0.2, 1] } },
-              exit: { opacity: 0, y: -120, scale: 0.95, transition: { duration: 1.2, ease: [0.4, 0, 0.2, 1] } },
-            }}
+            key={location.pathname + '-' + langTransitionKey}
+            variants={pageVariants[pageType] || pageVariants.home}
             initial="initial"
             animate="animate"
             exit="exit"
             className="min-h-screen"
             style={{ width: '100vw' }}
           >
-            {currentPage === 'privacy' && <PrivacyPolicy />}
-            {currentPage === 'terms' && <TermsOfService />}
-            {currentPage === 'home' && <Home />}
+            <Routes location={location} key={location.pathname + '-' + langTransitionKey}>
+              <Route path="/" element={<Home />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/terms" element={<TermsOfService />} />
+            </Routes>
           </motion.div>
         </AnimatePresence>
         {/* Overlay-аниматор для смены языка */}
@@ -144,6 +141,14 @@ function App() {
         </AnimatePresence>
       </main>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AnimatedRoutes />
+    </Router>
   );
 }
 

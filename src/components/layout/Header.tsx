@@ -3,19 +3,16 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../ui/LanguageSwitcher';
 import Icon from '../../assets/icon.svg';
+import { useNavigate } from 'react-router-dom';
 
-interface HeaderProps {
-  currentPage: string;
-  setCurrentPage: (page: string) => void;
-}
-
-const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage }) => {
+const Header: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   const navItems = [
-    { key: 'home', label: t('nav.home') },
-    { key: 'privacy', label: t('nav.privacy') },
-    { key: 'terms', label: t('nav.terms') },
+    { key: '/', label: t('nav.home') },
+    { key: '/privacy', label: t('nav.privacy') },
+    { key: '/terms', label: t('nav.terms') },
   ];
 
   return (
@@ -28,7 +25,7 @@ const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage }) => {
         <motion.div
           whileHover={{ scale: 1.05 }}
           className="flex items-center gap-3 cursor-pointer"
-          onClick={() => setCurrentPage('home')}
+          onClick={() => navigate('/')}
         >
           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 border-3 border-black flex items-center justify-center">
             <img src={Icon} className="w-8 h-8" alt="Logo" />
@@ -40,9 +37,9 @@ const Header: React.FC<HeaderProps> = ({ currentPage, setCurrentPage }) => {
           {navItems.map((item) => (
             <motion.button
               key={item.key}
-              onClick={() => setCurrentPage(item.key)}
+              onClick={() => navigate(item.key)}
               className={`font-bold text-lg transition-colors duration-200 ${
-                currentPage === item.key
+                window.location.pathname === item.key
                   ? 'text-blue-500 underline decoration-4 underline-offset-4'
                   : 'text-black hover:text-blue-500'
               }`}

@@ -3,9 +3,11 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { Mail, Github } from 'lucide-react';
 import Icon from '../../assets/icon.svg';
+import { useNavigate } from 'react-router-dom';
 
 const Footer: React.FC = () => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
 
   return (
     <footer className="bg-black text-white border-t-4 border-black py-12">
@@ -98,18 +100,20 @@ const Footer: React.FC = () => {
           >
             <h3 className="text-xl font-bold mb-4 text-green-400">Links</h3>
             <div className="space-y-3">
-              <a
-                href="#"
-                className="block text-gray-300 hover:text-white font-medium transition-colors"
+              <button
+                onClick={() => navigate('/privacy')}
+                className="block text-gray-300 hover:text-white font-medium transition-colors text-left w-full"
+                type="button"
               >
                 {t('footer.privacy')}
-              </a>
-              <a
-                href="#"
-                className="block text-gray-300 hover:text-white font-medium transition-colors"
+              </button>
+              <button
+                onClick={() => navigate('/terms')}
+                className="block text-gray-300 hover:text-white font-medium transition-colors text-left w-full"
+                type="button"
               >
                 {t('footer.terms')}
-              </a>
+              </button>
             </div>
           </motion.div>
 
