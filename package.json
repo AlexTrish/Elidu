@@ -1,5 +1,5 @@
 {
-  "name": "bolt-expo-starter",
+  "name": "elidu",
   "main": "expo-router/entry",
   "version": "1.0.1",
   "private": true,
@@ -45,7 +45,9 @@
     "react-native-svg": "15.11.2",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "^0.20.0",
-    "react-native-webview": "13.13.5"
+    "react-native-webview": "13.13.5",
+    "xlsx": "^0.18.5",
+    "expo-sqlite": "~15.2.14"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

@@ -1,14 +1,5 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  Switch,
-  Alert,
-  useColorScheme,
-} from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, Alert, useColorScheme, Modal, TextInput, Animated, Platform, Appearance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Moon, Sun, Download, Bell, Info, Trash2, ChevronRight, Shield, Globe, LogOut, User, CreditCard as Edit3 } from 'lucide-react-native';
 import { t } from '../../services/i18n';
@@ -17,18 +8,28 @@ import { useAuth } from '../../hooks/useAuth';
 import { AuthService } from '../../services/auth';
 
 export default function SettingsScreen() {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const systemColorScheme = useColorScheme();
+  const isDark = systemColorScheme === 'dark';
   const { currentLanguage, changeLanguage } = useLanguage();
   const { user, signOut } = useAuth();
-  
-  const [darkMode, setDarkMode] = useState(isDark);
+  const [darkMode, setDarkMode] = useState(systemColorScheme === 'dark');
+  const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system');
+  const [showThemeModal, setShowThemeModal] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [dailyUpdates, setDailyUpdates] = useState(false);
   const [showParticipantIdModal, setShowParticipantIdModal] = useState(false);
   const [participantIdInput, setParticipantIdInput] = useState(user?.participantId || '');
-  
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
   const styles = createStyles(isDark);
+
+  useEffect(() => {
+    if (themeMode === 'system') {
+      setDarkMode(systemColorScheme === 'dark');
+    } else {
+      setDarkMode(themeMode === 'dark');
+    }
+  }, [themeMode, systemColorScheme]);
 
   const handleUpdateParticipantId = async () => {
     try {
@@ -62,7 +63,8 @@ export default function SettingsScreen() {
         { 
           text: t('clearAllData'), 
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
+            await AuthService.signOut();
             Alert.alert(t('success'), 'All data has been cleared');
           }
         }
@@ -71,30 +73,11 @@ export default function SettingsScreen() {
   };
 
   const handleAbout = () => {
-    Alert.alert(
-      t('about'),
-      'University Admission Tracker v1.0.0\n\nHelps you track your chances of admission to universities by monitoring your rank position and calculating probability based on available seats and applicants with original documents.'
-    );
+    setShowAboutModal(true);
   };
 
   const handleLanguageChange = () => {
-    Alert.alert(
-      t('language'),
-      t('languageDesc'),
-      [
-        { text: t('cancel'), style: 'cancel' },
-        { 
-          text: 'English', 
-          onPress: () => changeLanguage('en'),
-          style: currentLanguage === 'en' ? 'default' : 'default'
-        },
-        { 
-          text: 'Русский', 
-          onPress: () => changeLanguage('ru'),
-          style: currentLanguage === 'ru' ? 'default' : 'default'
-        }
-      ]
-    );
+    setShowLanguageModal(true);
   };
 
   const handleSignOut = () => {
@@ -112,6 +95,23 @@ export default function SettingsScreen() {
     );
   };
 
+  // Appearance switch (mock, not system-wide)
+  const handleDarkModeSwitch = (value: boolean) => {
+    setDarkMode(value);
+    // Optionally, persist to AsyncStorage or context
+  };
+
+  // Notifications switch (mock)
+  const handleNotificationsSwitch = (value: boolean) => {
+    setNotifications(value);
+    // Optionally, persist to AsyncStorage or context
+  };
+
+  const handleDailyUpdatesSwitch = (value: boolean) => {
+    setDailyUpdates(value);
+    // Optionally, persist to AsyncStorage or context
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -125,17 +125,16 @@ export default function SettingsScreen() {
           )}
         </View>
       </View>
-              {user.participantId && (
-                <Text style={styles.participantId}>
-                  ID участника: {user.participantId}
-                </Text>
-              )}
+      {user?.participantId && (
+        <Text style={styles.participantId}>
+          ID участника: {user.participantId}
+        </Text>
+      )}
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {/* Profile Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Профиль</Text>
-          
           <TouchableOpacity 
             style={styles.actionItem} 
             onPress={() => {
@@ -159,7 +158,6 @@ export default function SettingsScreen() {
         {/* Language Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('language')}</Text>
-          
           <TouchableOpacity style={styles.actionItem} onPress={handleLanguageChange}>
             <View style={styles.settingInfo}>
               <Globe size={20} color={isDark ? '#F9FAFB' : '#111827'} />
@@ -177,14 +175,9 @@ export default function SettingsScreen() {
         {/* Appearance Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('appearance')}</Text>
-          
-          <View style={styles.settingItem}>
+          <TouchableOpacity style={styles.settingItem} onPress={() => setShowThemeModal(true)}>
             <View style={styles.settingInfo}>
-              {isDark ? (
-                <Moon size={20} color={isDark ? '#F9FAFB' : '#111827'} />
-              ) : (
-                <Sun size={20} color={isDark ? '#F9FAFB' : '#111827'} />
-              )}
+              <Sun size={20} color={darkMode ? '#F9FAFB' : '#111827'} />
               <View style={styles.settingText}>
                 <Text style={styles.settingLabel}>{t('darkMode')}</Text>
                 <Text style={styles.settingDescription}>
@@ -192,19 +185,25 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             </View>
-            <Switch
-              value={darkMode}
-              onValueChange={setDarkMode}
-              trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
-              thumbColor={darkMode ? '#ffffff' : '#f4f3f4'}
-            />
-          </View>
+            <View style={{
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderRadius: 6,
+              backgroundColor: darkMode ? '#374151' : '#F3F4F6',
+            }}>
+              <Text style={{
+                color: darkMode ? '#F9FAFB' : '#111827',
+                fontWeight: '600'
+              }}>
+                {themeMode === 'system' ? 'System' : themeMode === 'light' ? 'Light' : 'Dark'}
+              </Text>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Notifications Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('notifications')}</Text>
-          
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
               <Bell size={20} color={isDark ? '#F9FAFB' : '#111827'} />
@@ -217,12 +216,11 @@ export default function SettingsScreen() {
             </View>
             <Switch
               value={notifications}
-              onValueChange={setNotifications}
+              onValueChange={handleNotificationsSwitch}
               trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
               thumbColor={notifications ? '#ffffff' : '#f4f3f4'}
             />
           </View>
-
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
               <Shield size={20} color={isDark ? '#F9FAFB' : '#111827'} />
@@ -235,7 +233,7 @@ export default function SettingsScreen() {
             </View>
             <Switch
               value={dailyUpdates}
-              onValueChange={setDailyUpdates}
+              onValueChange={handleDailyUpdatesSwitch}
               trackColor={{ false: '#D1D5DB', true: '#3B82F6' }}
               thumbColor={dailyUpdates ? '#ffffff' : '#f4f3f4'}
             />
@@ -245,7 +243,6 @@ export default function SettingsScreen() {
         {/* Data Management Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('dataManagement')}</Text>
-          
           <TouchableOpacity style={styles.actionItem} onPress={handleExportData}>
             <View style={styles.settingInfo}>
               <Download size={20} color="#10B981" />
@@ -258,7 +255,6 @@ export default function SettingsScreen() {
             </View>
             <ChevronRight size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.actionItem} onPress={handleClearData}>
             <View style={styles.settingInfo}>
               <Trash2 size={20} color="#EF4444" />
@@ -276,7 +272,6 @@ export default function SettingsScreen() {
         {/* About Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('about')}</Text>
-          
           <TouchableOpacity style={styles.actionItem} onPress={handleAbout}>
             <View style={styles.settingInfo}>
               <Info size={20} color={isDark ? '#F9FAFB' : '#111827'} />
@@ -314,8 +309,9 @@ export default function SettingsScreen() {
       <Modal
         visible={showParticipantIdModal}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'}
         transparent={false}
+        onRequestClose={() => setShowParticipantIdModal(false)}
       >
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
@@ -332,7 +328,6 @@ export default function SettingsScreen() {
               <Text style={styles.saveButton}>Сохранить</Text>
             </TouchableOpacity>
           </View>
-
           <View style={styles.modalContent}>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>ID участника</Text>
@@ -350,6 +345,198 @@ export default function SettingsScreen() {
             </View>
           </View>
         </SafeAreaView>
+      </Modal>
+
+      {/* Language Modal */}
+      <Modal
+        visible={showLanguageModal}
+        animationType="none"
+        transparent={true}
+        onRequestClose={() => setShowLanguageModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.3)',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <AnimatedLanguageModal
+            isDark={isDark}
+            currentLanguage={currentLanguage}
+            changeLanguage={changeLanguage}
+            setShowLanguageModal={setShowLanguageModal}
+            t={t}
+          />
+        </View>
+      </Modal>
+
+      {/* About Modal */}
+      <Modal
+        visible={showAboutModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowAboutModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.3)',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <View style={{
+            backgroundColor: isDark ? '#1F2937' : 'white',
+            borderRadius: 16,
+            padding: 24,
+            minWidth: 280,
+            alignItems: 'center'
+          }}>
+            <Text style={{
+              fontSize: 20,
+              fontWeight: 'bold',
+              color: isDark ? '#F9FAFB' : '#111827',
+              marginBottom: 12
+            }}>
+              {t('aboutApp')}
+            </Text>
+            <Text style={{
+              fontSize: 14,
+              color: isDark ? '#9CA3AF' : '#6B7280',
+              marginBottom: 16,
+              textAlign: 'center'
+            }}>
+              {t('aboutAppDesc')}
+            </Text>
+            <Text style={{
+              fontSize: 14,
+              color: isDark ? '#F9FAFB' : '#111827',
+              marginBottom: 8,
+              textAlign: 'center'
+            }}>
+              University Admission Tracker v1.0.0
+            </Text>
+            <TouchableOpacity
+              style={{ marginTop: 12 }}
+              onPress={() => setShowAboutModal(false)}
+            >
+              <Text style={{
+                color: '#EF4444',
+                fontWeight: '500',
+                fontSize: 16
+              }}>
+                {t('cancel')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Theme Modal (dropdown style) */}
+      <Modal
+        visible={showThemeModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowThemeModal(false)}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0,0,0,0.3)',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <View style={{
+            backgroundColor: darkMode ? '#1F2937' : 'white',
+            borderRadius: 16,
+            padding: 24,
+            minWidth: 220,
+            alignItems: 'center'
+          }}>
+            <Text style={{
+              fontSize: 18,
+              fontWeight: 'bold',
+              color: darkMode ? '#F9FAFB' : '#111827',
+              marginBottom: 16
+            }}>
+              {t('appearance')}
+            </Text>
+            <TouchableOpacity
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                borderRadius: 8,
+                backgroundColor: themeMode === 'system' ? '#3B82F6' : (darkMode ? '#374151' : '#F3F4F6'),
+                marginBottom: 8,
+                width: 160,
+                alignItems: 'center'
+              }}
+              onPress={() => {
+                setThemeMode('system');
+                setShowThemeModal(false);
+              }}
+            >
+              <Text style={{
+                color: themeMode === 'system' ? 'white' : (darkMode ? '#F9FAFB' : '#111827'),
+                fontWeight: '600'
+              }}>
+                System
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                borderRadius: 8,
+                backgroundColor: themeMode === 'light' ? '#3B82F6' : (darkMode ? '#374151' : '#F3F4F6'),
+                marginBottom: 8,
+                width: 160,
+                alignItems: 'center'
+              }}
+              onPress={() => {
+                setThemeMode('light');
+                setShowThemeModal(false);
+              }}
+            >
+              <Text style={{
+                color: themeMode === 'light' ? 'white' : (darkMode ? '#F9FAFB' : '#111827'),
+                fontWeight: '600'
+              }}>
+                Light
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                paddingVertical: 12,
+                paddingHorizontal: 24,
+                borderRadius: 8,
+                backgroundColor: themeMode === 'dark' ? '#3B82F6' : (darkMode ? '#374151' : '#F3F4F6'),
+                width: 160,
+                alignItems: 'center'
+              }}
+              onPress={() => {
+                setThemeMode('dark');
+                setShowThemeModal(false);
+              }}
+            >
+              <Text style={{
+                color: themeMode === 'dark' ? 'white' : (darkMode ? '#F9FAFB' : '#111827'),
+                fontWeight: '600'
+              }}>
+                Dark
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ marginTop: 16 }}
+              onPress={() => setShowThemeModal(false)}
+            >
+              <Text style={{
+                color: '#EF4444',
+                fontWeight: '500',
+                fontSize: 16
+              }}>
+                {t('cancel')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -500,3 +687,99 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     marginTop: 8,
   },
 });
+
+function AnimatedLanguageModal({ isDark, currentLanguage, changeLanguage, setShowLanguageModal, t }: any) {
+  const scale = useRef(new Animated.Value(0.7)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(scale, {
+        toValue: 1,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 260,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={{
+      backgroundColor: isDark ? '#1F2937' : 'white',
+      borderRadius: 16,
+      padding: 24,
+      minWidth: 250,
+      alignItems: 'center',
+      opacity,
+      transform: [{ scale }],
+    }}>
+      <Text style={{
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: isDark ? '#F9FAFB' : '#111827',
+        marginBottom: 16
+      }}>
+        {t('language')}
+      </Text>
+      <TouchableOpacity
+        style={{
+          paddingVertical: 12,
+          paddingHorizontal: 24,
+          borderRadius: 8,
+          backgroundColor: currentLanguage === 'en' ? '#3B82F6' : (isDark ? '#374151' : '#F3F4F6'),
+          marginBottom: 8,
+          width: 180,
+          alignItems: 'center'
+        }}
+        onPress={() => {
+          changeLanguage('en');
+          setShowLanguageModal(false);
+        }}
+      >
+        <Text style={{
+          color: currentLanguage === 'en' ? 'white' : (isDark ? '#F9FAFB' : '#111827'),
+          fontWeight: '600'
+        }}>
+          English
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={{
+          paddingVertical: 12,
+          paddingHorizontal: 24,
+          borderRadius: 8,
+          backgroundColor: currentLanguage === 'ru' ? '#3B82F6' : (isDark ? '#374151' : '#F3F4F6'),
+          width: 180,
+          alignItems: 'center'
+        }}
+        onPress={() => {
+          changeLanguage('ru');
+          setShowLanguageModal(false);
+        }}
+      >
+        <Text style={{
+          color: currentLanguage === 'ru' ? 'white' : (isDark ? '#F9FAFB' : '#111827'),
+          fontWeight: '600'
+        }}>
+          Русский
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={{ marginTop: 16 }}
+        onPress={() => setShowLanguageModal(false)}
+      >
+        <Text style={{
+          color: '#EF4444',
+          fontWeight: '500',
+          fontSize: 16
+        }}>
+          {t('cancel')}
+        </Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}

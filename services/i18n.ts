@@ -118,6 +118,23 @@ export interface Translations {
   yes: string;
   no: string;
   ok: string;
+
+  // Add missing keys below:
+  required: string;
+  pleaseFillAllFields: string;
+  pleaseSelectUniversity: string;
+  chooseProgram: string;
+  updateData: string;
+  progress: string;
+  regress: string;
+  priority: string;
+  importDataForProgram: string;
+  googleSheetUrlPlaceholder: string;
+  pasteCsvTable: string;
+  pasteHtmlTable: string;
+  loadData: string;
+  saveLink: string;
+  googleSheetUrlSaved: string;
 }
 
 export const translations: Record<'en' | 'ru', Translations> = {
@@ -241,6 +258,23 @@ export const translations: Record<'en' | 'ru', Translations> = {
     yes: 'Yes',
     no: 'No',
     ok: 'OK',
+
+    // Add missing keys below:
+    required: 'required',
+    pleaseFillAllFields: 'Please fill in all required fields',
+    pleaseSelectUniversity: 'Please select a university first',
+    chooseProgram: 'Choose Program',
+    updateData: 'Update Data',
+    progress: 'Progress',
+    regress: 'Regress',
+    priority: 'Priority',
+    importDataForProgram: 'Import Data for Program',
+    googleSheetUrlPlaceholder: 'Google Sheet URL (optional)',
+    pasteCsvTable: 'Paste CSV table (with headers)',
+    pasteHtmlTable: 'Paste HTML table',
+    loadData: 'Load Data',
+    saveLink: 'Save Link',
+    googleSheetUrlSaved: 'Google Sheet link saved',
   },
   ru: {
     // Navigation
@@ -362,6 +396,23 @@ export const translations: Record<'en' | 'ru', Translations> = {
     yes: 'Да',
     no: 'Нет',
     ok: 'ОК',
+
+    // Add missing keys below:
+    required: 'обязательно',
+    pleaseFillAllFields: 'Пожалуйста, заполните все обязательные поля',
+    pleaseSelectUniversity: 'Пожалуйста, выберите университет',
+    chooseProgram: 'Выберите направление',
+    updateData: 'Обновить данные',
+    progress: 'Прогресс',
+    regress: 'Регресс',
+    priority: 'Приоритет',
+    importDataForProgram: 'Импорт данных для направления',
+    googleSheetUrlPlaceholder: 'Ссылка на Google таблицу (необязательно)',
+    pasteCsvTable: 'Вставьте CSV-таблицу (с заголовками)',
+    pasteHtmlTable: 'Вставьте HTML таблицу',
+    loadData: 'Подгрузить данные',
+    saveLink: 'Сохранить ссылку',
+    googleSheetUrlSaved: 'Ссылка сохранена',
   },
 };
 

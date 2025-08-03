@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FileText, Link, Upload, Download, CircleCheck as CheckCircle, CircleAlert as AlertCircle } from 'lucide-react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as XLSX from 'xlsx';
+import { Database } from '../../services/database';
 
 export default function ImportScreen() {
   const colorScheme = useColorScheme();
@@ -21,6 +24,12 @@ export default function ImportScreen() {
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   
   const styles = createStyles(isDark);
+
+  useEffect(() => {
+    (async () => {
+      await Database.init();
+    })();
+  }, []);
 
   const handleWebImport = async () => {
     if (!webUrl.trim()) {
@@ -44,24 +53,50 @@ export default function ImportScreen() {
     }
   };
 
-  const handleFileImport = () => {
-    // In a real app, you would use expo-document-picker here
-    Alert.alert(
-      'File Import',
-      'This feature will allow you to import CSV or Excel files from your device.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Choose File', onPress: () => {
-          // Mock file import
-          setIsImporting(true);
-          setTimeout(() => {
-            setIsImporting(false);
-            setImportStatus('success');
-            Alert.alert('Success', 'File imported successfully!');
-          }, 1500);
-        }}
-      ]
-    );
+  const handleFileImport = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-excel',
+          'text/csv',
+          'application/csv',
+          'text/comma-separated-values',
+          'application/vnd.oasis.opendocument.spreadsheet'
+        ],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+
+      if (result.type === 'cancel') return;
+
+      setIsImporting(true);
+
+      // Read file as array buffer
+      const fileUri = result.assets?.[0]?.uri;
+      if (!fileUri) throw new Error('No file selected');
+
+      const response = await fetch(fileUri);
+      const blob = await response.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+
+      // Parse with XLSX
+      const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      // Example: show preview or process data
+      // You can map jsonData to your internal format here
+      // For now, just show success
+      setIsImporting(false);
+      setImportStatus('success');
+      Alert.alert('Success', 'File imported successfully!');
+    } catch (error) {
+      setIsImporting(false);
+      setImportStatus('error');
+      Alert.alert('Error', 'Failed to import file. Please check the format and try again.');
+    }
   };
 
   const handleExport = () => {

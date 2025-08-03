@@ -101,14 +101,14 @@ export class AdmissionCalculator {
     };
   }
 
-  static generateShareableLink(universityId: string, programId: string, participantId: string): string {
-    const baseUrl = 'https://admission-tracker.app'; // В реальном приложении это будет ваш домен
-    return `${baseUrl}/track/${universityId}/${programId}/${participantId}`;
-  }
+  // static generateShareableLink(universityId: string, programId: string, participantId: string): string {
+  //   const baseUrl = 'https://admission-tracker.app'; // В реальном приложении это будет ваш домен
+  //   return `${baseUrl}/track/${universityId}/${programId}/${participantId}`;
+  // }
 
-  static generateEditableLink(universityId: string, programId: string): string {
-    const baseUrl = 'https://admission-tracker.app';
-    const editToken = Math.random().toString(36).substring(2, 15);
-    return `${baseUrl}/edit/${universityId}/${programId}/${editToken}`;
-  }
+  // static generateEditableLink(universityId: string, programId: string): string {
+  //   const baseUrl = 'https://admission-tracker.app';
+  //   const editToken = Math.random().toString(36).substring(2, 15);
+  //   return `${baseUrl}/edit/${universityId}/${programId}/${editToken}`;
+  // }
 }

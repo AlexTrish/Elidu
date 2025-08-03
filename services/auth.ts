@@ -30,7 +30,7 @@ export class AuthService {
   static async initialize() {
     try {
       const userData = await AsyncStorage.getItem(STORAGE_KEY);
-      const participantId = await AsyncStorage.getItem(PARTICIPANT_ID_KEY);
+      const participantId = await AsyncStorage.getItem(PARTICIPANT_ID_KEY); // <-- participantId читается отсюда
       if (userData) {
         this.user = { ...JSON.parse(userData), participantId };
         this.notifyListeners();
@@ -114,7 +114,7 @@ export class AuthService {
 export const useGoogleAuth = () => {
   const [request, response, promptAsync] = useAuthRequest(
     {
-      clientId: '1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com', // Replace with your actual client ID
+      clientId: process.env.EXPO_GOOGLE_CLIENT_ID,
       scopes: ['openid', 'profile', 'email'],
       redirectUri: makeRedirectUri({
         scheme: 'myapp',

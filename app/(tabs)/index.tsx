@@ -1,18 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  useColorScheme,
-} from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useColorScheme, } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, TrendingUp, Users, BookOpen } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { ProbabilityIndicator } from '../../components/ProbabilityIndicator';
 import { StatCard } from '../../components/StatCard';
-import { mockData } from '../../services/mockData';
+import { Database } from '../../services/database';
 import { t } from '../../services/i18n';
 
 export default function HomeScreen() {
@@ -20,8 +13,18 @@ export default function HomeScreen() {
   const isDark = colorScheme === 'dark';
   const router = useRouter();
   
-  const [programs, setPrograms] = useState(mockData.programs);
-  const [universities, setUniversities] = useState(mockData.universities);
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [universities, setUniversities] = useState<any[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      await Database.init();
+      const dbUniversities = await Database.getUniversities();
+      const dbPrograms = await Database.getPrograms();
+      setUniversities(dbUniversities);
+      setPrograms(dbPrograms);
+    })();
+  }, []);
 
   const totalPrograms = programs.length;
   const averageProbability = programs.reduce((sum, p) => sum + p.probability, 0) / totalPrograms || 0;

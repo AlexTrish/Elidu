@@ -1,18 +1,40 @@
 import { Tabs } from 'expo-router';
 import { Chrome as Home, University, ChartBar as BarChart3, Download, Settings } from 'lucide-react-native';
-import { t } from '../../services/i18n';
+import { useEffect, useState } from 'react';
+import { t, getCurrentLanguage } from '../../services/i18n';
+import { useColorScheme } from 'react-native';
 
 export default function TabLayout() {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
+  // Обновлять табы при смене языка
+  const [lang, setLang] = useState(getCurrentLanguage());
+  useEffect(() => {
+    const handler = () => setLang(getCurrentLanguage());
+    if (globalThis.i18next) {
+      globalThis.i18next.on('languageChanged', handler);
+      return () => globalThis.i18next.off('languageChanged', handler);
+    }
+    if (t && t.on) {
+      t.on('languageChanged', handler);
+      return () => t.off('languageChanged', handler);
+    }
+    // fallback for custom i18n
+    window.addEventListener('languageChanged', handler);
+    return () => window.removeEventListener('languageChanged', handler);
+  }, []);
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#3B82F6',
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarActiveTintColor: isDark ? '#60A5FA' : '#3B82F6', // blue-400/blue-600
+        tabBarInactiveTintColor: isDark ? '#9CA3AF' : '#6B7280', // gray-400/gray-600
         tabBarStyle: {
-          backgroundColor: 'white',
+          backgroundColor: isDark ? '#1F2937' : '#FFFFFF', // dark:bg-gray-800, light:bg-white
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: isDark ? '#374151' : '#E5E7EB', // dark:border-gray-700, light:border-gray-200
           height: 80,
           paddingBottom: 20,
           paddingTop: 10,
