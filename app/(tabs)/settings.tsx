@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, Alert, useColorScheme, Modal, TextInput, Animated, Platform, Appearance } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, Alert, useColorScheme, Modal, TextInput, Animated, Platform, Appearance, Dimensions } from 'react-native';
+import { Toast } from '../../components/Toast';
+import { useToast } from '../../hooks/useToast';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Moon, Sun, Download, Bell, Info, Trash2, ChevronRight, Shield, Globe, LogOut, User, CreditCard as Edit3, FileText } from 'lucide-react-native';
+import * as DocumentPicker from 'expo-document-picker';
 import { t } from '../../services/i18n';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
@@ -13,6 +16,7 @@ export default function SettingsScreen() {
   const isDark = systemColorScheme === 'dark';
   const { currentLanguage, changeLanguage } = useLanguage();
   const { user, signOut } = useAuth();
+  const { toast, showToast, hideToast } = useToast();
   const [darkMode, setDarkMode] = useState(systemColorScheme === 'dark');
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system');
   const [showThemeModal, setShowThemeModal] = useState(false);
@@ -37,10 +41,10 @@ export default function SettingsScreen() {
   const handleUpdateParticipantId = async () => {
     try {
       await AuthService.updateParticipantId(participantIdInput);
-      Alert.alert(t('success'), 'ID участника обновлен');
+      showToast('ID участника обновлен');
       setShowParticipantIdModal(false);
     } catch (error) {
-      Alert.alert(t('error'), 'Не удалось обновить ID участника');
+      showToast('Не удалось обновить ID участника', 'error');
     }
   };
 
@@ -51,7 +55,7 @@ export default function SettingsScreen() {
       [
         { text: t('cancel'), style: 'cancel' },
         { text: t('exportData'), onPress: () => {
-          Alert.alert(t('success'), 'Data exported successfully!');
+          showToast('Данные успешно экспортированы!');
         }}
       ]
     );
@@ -88,7 +92,21 @@ export default function SettingsScreen() {
   const handleClearCrashLog = async () => {
     await CrashLogger.clearCrashLog();
     setCrashLog('');
-    Alert.alert('Успех', 'Лог ошибок очищен');
+    showToast('Лог ошибок очищен');
+  };
+
+  const handleFileImport = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv'],
+        copyToCacheDirectory: true,
+      });
+      if (result.type !== 'cancel') {
+        showToast('Файл выбран для импорта');
+      }
+    } catch (error) {
+      showToast('Не удалось выбрать файл', 'error');
+    }
   };
 
   const handleLanguageChange = () => {
@@ -590,9 +608,20 @@ export default function SettingsScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+      
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
     </SafeAreaView>
   );
 }
+
+const { width: screenWidth } = Dimensions.get('window');
+const scale = screenWidth / 375;
+const isSmallScreen = screenWidth < 375;
 
 const createStyles = (isDark: boolean) => StyleSheet.create({
   container: {
@@ -631,13 +660,13 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     fontWeight: '500',
   },
   scrollContainer: {
-    padding: 20,
+    padding: Math.max(12, 20 * scale),
   },
   section: {
     backgroundColor: isDark ? '#1F2937' : 'white',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
+    borderRadius: Math.max(8, 12 * scale),
+    padding: Math.max(12, 20 * scale),
+    marginBottom: Math.max(12, 16 * scale),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -654,15 +683,17 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
+    paddingVertical: Math.max(2, 4 * scale),
+    minHeight: Math.max(44, 48 * scale),
   },
   actionItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: Math.max(6, 8 * scale),
     borderBottomWidth: 1,
     borderBottomColor: isDark ? '#374151' : '#F3F4F6',
+    minHeight: Math.max(44, 48 * scale),
   },
   settingInfo: {
     flexDirection: 'row',
@@ -674,14 +705,17 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     flex: 1,
   },
   settingLabel: {
-    fontSize: 16,
+    fontSize: Math.max(14, 16 * scale),
     fontWeight: '500',
     color: isDark ? '#F9FAFB' : '#111827',
     marginBottom: 2,
+    flexWrap: 'wrap',
   },
   settingDescription: {
-    fontSize: 12,
+    fontSize: Math.max(11, 12 * scale),
     color: isDark ? '#9CA3AF' : '#6B7280',
+    flexWrap: 'wrap',
+    lineHeight: Math.max(16, 18 * scale),
   },
   modalContainer: {
     flex: 1,
@@ -730,13 +764,14 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   textInput: {
     borderWidth: 1,
     borderColor: isDark ? '#374151' : '#D1D5DB',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
+    borderRadius: Math.max(6, 8 * scale),
+    paddingHorizontal: Math.max(10, 12 * scale),
+    paddingVertical: Math.max(10, 12 * scale),
+    fontSize: Math.max(14, 16 * scale),
     color: isDark ? '#F9FAFB' : '#111827',
     backgroundColor: isDark ? '#1F2937' : 'white',
     marginTop: 8,
+    minHeight: Math.max(40, 48 * scale),
   },
   crashLogText: {
     fontFamily: 'monospace',

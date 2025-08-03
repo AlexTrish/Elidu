@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, useColorScheme } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, TextInput, Alert, useColorScheme, Dimensions, Platform } from 'react-native';
+import { Toast } from '../../components/Toast';
+import { useToast } from '../../hooks/useToast';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, CreditCard as Edit3, Trash2, ExternalLink } from 'lucide-react-native';
 import { AdmissionCalculator, AdmissionListEntry, PositionResult } from '../../services/admissionCalculator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
+import * as DocumentPicker from 'expo-document-picker';
 import { t } from '../../services/i18n';
 import { AuthService } from '../../services/auth';
 import { Database } from '../../services/database';
@@ -61,6 +64,7 @@ async function getProgramHistory(programId: string): Promise<ProgramHistoryEntry
 export default function UniversitiesScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { toast, showToast, hideToast } = useToast();
 
   const [universities, setUniversities] = useState<University[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -84,12 +88,10 @@ export default function UniversitiesScreen() {
   const [programForm, setProgramForm] = useState({
     name: '',
     budgetSeats: '',
-    passingScore: '',
-    contractType: 'budget' as 'budget' | 'contract' | 'quota',
-    currentRank: '',
-    originalsAbove: '',
-    examScore: '',
   });
+  
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importUrl, setImportUrl] = useState('');
 
   const styles = createStyles(isDark);
 
@@ -108,13 +110,9 @@ export default function UniversitiesScreen() {
     setProgramForm({
       name: '',
       budgetSeats: '',
-      passingScore: '',
-      contractType: 'budget',
-      currentRank: '',
-      originalsAbove: '',
-      examScore: '',
     });
     setEditingProgram(null);
+    setImportUrl('');
   };
 
   // Инициализация БД и загрузка данных при первом запуске и при изменениях
@@ -155,8 +153,8 @@ export default function UniversitiesScreen() {
   };
 
   const handleAddProgram = async () => {
-    if (!programForm.name.trim() || !programForm.budgetSeats || !programForm.currentRank) {
-      Alert.alert(t('error'), t('pleaseFillAllFields') || 'Please fill in all required fields');
+    if (!programForm.name.trim() || !programForm.budgetSeats) {
+      Alert.alert(t('error'), 'Заполните название и количество мест');
       return;
     }
     if (!selectedUniversity) {
@@ -165,38 +163,27 @@ export default function UniversitiesScreen() {
     }
 
     const budgetSeats = parseInt(programForm.budgetSeats);
-    const currentRank = parseInt(programForm.currentRank);
-    const originalsAbove = parseInt(programForm.originalsAbove) || 0;
-    const examScore = parseInt(programForm.examScore) || 0;
 
-    const probability = calculateProbability(currentRank, originalsAbove, budgetSeats);
+    const programData = {
+      id: editingProgram?.id || Date.now().toString(),
+      universityId: selectedUniversity.id,
+      name: programForm.name,
+      budgetSeats,
+      passingScore: undefined,
+      contractType: 'budget' as const,
+      currentRank: 0,
+      originalsAbove: 0,
+      examScore: 0,
+      probability: 0,
+      googleSheetUrl: importUrl || undefined,
+    };
 
     if (editingProgram) {
-      await Database.updateProgram({
-        ...editingProgram,
-        name: programForm.name,
-        budgetSeats,
-        passingScore: programForm.passingScore ? parseInt(programForm.passingScore) : undefined,
-        contractType: programForm.contractType,
-        currentRank,
-        originalsAbove,
-        examScore,
-        probability,
-      });
+      await Database.updateProgram(programData);
     } else {
-      await Database.addProgram({
-        id: Date.now().toString(),
-        universityId: selectedUniversity.id,
-        name: programForm.name,
-        budgetSeats,
-        passingScore: programForm.passingScore ? parseInt(programForm.passingScore) : undefined,
-        contractType: programForm.contractType,
-        currentRank,
-        originalsAbove,
-        examScore,
-        probability,
-      });
+      await Database.addProgram(programData);
     }
+    
     const dbPrograms = await Database.getPrograms();
     setPrograms(dbPrograms);
 
@@ -218,12 +205,8 @@ export default function UniversitiesScreen() {
     setProgramForm({
       name: program.name,
       budgetSeats: program.budgetSeats.toString(),
-      passingScore: program.passingScore?.toString() || '',
-      contractType: program.contractType,
-      currentRank: program.currentRank.toString(),
-      originalsAbove: program.originalsAbove.toString(),
-      examScore: program.examScore.toString(),
     });
+    setImportUrl((program as any).googleSheetUrl || '');
     setSelectedUniversity(universities.find(u => u.id === program.universityId) || null);
     setShowProgramModal(true);
   };
@@ -307,34 +290,14 @@ export default function UniversitiesScreen() {
         Alert.alert('Ошибка', 'Импорт из HTML не реализован');
         return;
       }
-      // Используем participantId
-      const userPosition = participantId
-        ? AdmissionCalculator.calculatePosition(admissionList, participantId, importingProgram.budgetSeats)
-        : null;
-
-      // Сохраняем историю
-      if (userPosition) {
-        const historyEntry: ProgramHistoryEntry = {
-          date: new Date().toISOString(),
-          generalPosition: userPosition.generalPosition,
-          priorityPosition: userPosition.priorityPosition,
-          admissionChance: userPosition.admissionChance,
-        };
-        await saveProgramHistory(importingProgram.id, historyEntry);
-      }
-
-      // Обновляем данные программы (затираем старые)
-      setPrograms(prev =>
-        prev.map(p =>
-          p.id === importingProgram.id
-            ? { ...p, admissionList, userPosition }
-            : p
-        )
-      );
+      
+      await updateProgramWithCalculations(importingProgram, admissionList);
+      
       setImportModalVisible(false);
       setImportData('');
       setImportSource(null);
       setImportingProgram(null);
+      showToast('Данные импортированы с подсчетом позиций!');
     } catch (e) {
       CrashLogger.logError(e as Error, 'Import Data');
       Alert.alert('Ошибка', 'Не удалось импортировать данные');
@@ -396,10 +359,73 @@ export default function UniversitiesScreen() {
             : p
         )
       );
-      Alert.alert('Успех', 'Данные успешно обновлены из Google таблицы');
+      showToast('Данные обновлены из Google таблицы!');
     } catch (e) {
       CrashLogger.logError(e as Error, 'Google Sheets Import');
-      Alert.alert('Ошибка', 'Не удалось загрузить данные из Google таблицы');
+      showToast('Не удалось загрузить данные', 'error');
+    }
+  };
+
+  // Обновление данных с подсчетом позиций
+  const updateProgramWithCalculations = async (program: ProgramWithHistory, admissionList: AdmissionListEntry[]) => {
+    const userPosition = participantId
+      ? AdmissionCalculator.calculatePosition(admissionList, participantId, program.budgetSeats)
+      : null;
+
+    // Сохраняем историю
+    if (userPosition) {
+      const historyEntry: ProgramHistoryEntry = {
+        date: new Date().toISOString(),
+        generalPosition: userPosition.generalPosition,
+        priorityPosition: userPosition.priorityPosition,
+        admissionChance: userPosition.admissionChance,
+      };
+      await saveProgramHistory(program.id, historyEntry);
+    }
+
+    // Обновляем программу в базе
+    const updatedProgram = {
+      ...program,
+      currentRank: userPosition?.generalPosition || 0,
+      originalsAbove: 0,
+      examScore: 0,
+      probability: userPosition?.admissionChance || 0,
+    };
+    
+    await Database.updateProgram(updatedProgram);
+    
+    setPrograms(prev =>
+      prev.map(p =>
+        p.id === program.id
+          ? { ...p, admissionList, userPosition }
+          : p
+      )
+    );
+  };
+
+  // Обновленная функция импорта из Google Sheets
+  const handleImportFromGoogleSheetWithCalculations = async (program: ProgramWithHistory) => {
+    if (!program || !program.googleSheetUrl) {
+      Alert.alert('Ошибка', 'Ссылка на Google таблицу не указана');
+      return;
+    }
+    try {
+      let url = program.googleSheetUrl;
+      if (url.includes('/edit')) {
+        url = url.replace(/\/edit.*$/, '/export?format=tsv');
+      } else if (!url.includes('export?format=tsv')) {
+        url += '/export?format=tsv';
+      }
+      const response = await fetch(url);
+      const csvData = await response.text();
+
+      const admissionList = AdmissionCalculator.parseAdmissionTable(csvData);
+      await updateProgramWithCalculations(program, admissionList);
+      
+      showToast('Данные обновлены с подсчетом позиций!');
+    } catch (e) {
+      CrashLogger.logError(e as Error, 'Google Sheets Import with Calculations');
+      showToast('Не удалось загрузить данные', 'error');
     }
   };
 
@@ -446,7 +472,7 @@ export default function UniversitiesScreen() {
                           text: pr.name,
                           onPress: () => {
                             if (pr.googleSheetUrl) {
-                              handleImportFromGoogleSheet(pr);
+                              handleImportFromGoogleSheetWithCalculations(pr);
                             } else {
                               setImportingProgram(pr);
                               setImportModalVisible(true);
@@ -458,6 +484,39 @@ export default function UniversitiesScreen() {
                     style={styles.actionButton}
                   >
                     <Text style={{ color: '#3B82F6', fontWeight: 'bold' }}>{t('updateData') || 'Обновить данные'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      try {
+                        const data = {
+                          universities: await Database.getUniversities(),
+                          programs: await Database.getPrograms(),
+                          exportDate: new Date().toISOString()
+                        };
+                        const jsonData = JSON.stringify(data, null, 2);
+                        
+                        if (Platform.OS === 'web') {
+                          const blob = new Blob([jsonData], { type: 'application/json' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `elidu-export-${new Date().toISOString().split('T')[0]}.json`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        } else {
+                          await FileSystem.writeAsStringAsync(
+                            `${FileSystem.documentDirectory}elidu-export.json`,
+                            jsonData
+                          );
+                          showToast('Данные успешно экспортированы!');
+                        }
+                      } catch (error) {
+                        showToast('Не удалось экспортировать данные', 'error');
+                      }
+                    }}
+                    style={styles.actionButton}
+                  >
+                    <Text style={{ color: '#10B981', fontWeight: 'bold' }}>Экспорт</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     onPress={() => handleEditUniversity(university)}
@@ -549,7 +608,7 @@ export default function UniversitiesScreen() {
                           marginTop: 4,
                           alignSelf: 'flex-start'
                         }}
-                        onPress={() => handleImportFromGoogleSheet(program)}
+                        onPress={() => handleImportFromGoogleSheetWithCalculations(program)}
                       >
                         <Text style={{ color: 'white', fontWeight: '600' }}>{t('loadData') || 'Подгрузить данные'}</Text>
                       </TouchableOpacity>
@@ -651,18 +710,19 @@ export default function UniversitiesScreen() {
 
           <ScrollView style={styles.modalContent}>
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>{t('programName')} *</Text>
+              <Text style={styles.inputLabel}>Название направления *</Text>
               <TextInput
                 style={styles.textInput}
                 value={programForm.name}
                 onChangeText={(text) => setProgramForm(prev => ({ ...prev, name: text }))}
-                placeholder={t('programName')}
+                placeholder="Информатика и вычислительная техника"
                 placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                multiline
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>{t('budgetSeats')} *</Text>
+              <Text style={styles.inputLabel}>Количество бюджетных мест *</Text>
               <TextInput
                 style={styles.textInput}
                 value={programForm.budgetSeats}
@@ -674,74 +734,18 @@ export default function UniversitiesScreen() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>{t('currentRank')} *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={programForm.currentRank}
-                onChangeText={(text) => setProgramForm(prev => ({ ...prev, currentRank: text }))}
-                placeholder="22"
-                placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>{t('originalsAbove')} *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={programForm.originalsAbove}
-                onChangeText={(text) => setProgramForm(prev => ({ ...prev, originalsAbove: text }))}
-                placeholder="18"
-                placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>{t('yourExamScore')} *</Text>
-              <TextInput
-                style={styles.textInput}
-                value={programForm.examScore}
-                onChangeText={(text) => setProgramForm(prev => ({ ...prev, examScore: text }))}
-                placeholder="285"
-                placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>{t('passingScore')} ({t('optional')})</Text>
-              <TextInput
-                style={styles.textInput}
-                value={programForm.passingScore}
-                onChangeText={(text) => setProgramForm(prev => ({ ...prev, passingScore: text }))}
-                placeholder="250"
-                placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>{t('contractType')}</Text>
-              <View style={styles.contractTypeContainer}>
-                {(['budget', 'contract', 'quota'] as const).map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.contractTypeButton,
-                      programForm.contractType === type && styles.contractTypeButtonActive
-                    ]}
-                    onPress={() => setProgramForm(prev => ({ ...prev, contractType: type }))}
-                  >
-                    <Text style={[
-                      styles.contractTypeText,
-                      programForm.contractType === type && styles.contractTypeTextActive
-                    ]}>
-                      {t(type)}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <Text style={styles.inputLabel}>Импорт данных (необязательно)</Text>
+              <TouchableOpacity 
+                style={styles.importButton}
+                onPress={() => setShowImportModal(true)}
+              >
+                <Text style={styles.importButtonText}>Настроить импорт</Text>
+              </TouchableOpacity>
+              {importUrl && (
+                <Text style={styles.importUrlText} numberOfLines={2}>
+                  Ссылка: {importUrl}
+                </Text>
+              )}
             </View>
           </ScrollView>
         </SafeAreaView>
@@ -842,9 +846,81 @@ export default function UniversitiesScreen() {
           </View>
         </SafeAreaView>
       </Modal>
+
+      {/* Import Modal */}
+      <Modal
+        visible={showImportModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowImportModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowImportModal(false)}>
+              <Text style={styles.cancelButton}>Отмена</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Импорт данных</Text>
+            <TouchableOpacity onPress={() => {
+              setShowImportModal(false);
+            }}>
+              <Text style={styles.saveButton}>Готово</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.modalContent}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Ссылка на Google Таблицу</Text>
+              <TextInput
+                style={[styles.textInput, { minHeight: Math.max(60, 80 * scale) }]}
+                value={importUrl}
+                onChangeText={setImportUrl}
+                placeholder="https://docs.google.com/spreadsheets/d/.../edit"
+                placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                multiline
+                autoCapitalize="none"
+              />
+              <Text style={styles.helpText}>
+                Вставьте ссылку на публичную Google Таблицу с данными о поступлении
+              </Text>
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Или загрузите файл</Text>
+              <TouchableOpacity 
+                style={styles.fileButton}
+                onPress={async () => {
+                  try {
+                    const result = await DocumentPicker.getDocumentAsync({
+                      type: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv'],
+                      copyToCacheDirectory: true,
+                    });
+                    if (result.type !== 'cancel') {
+                      Alert.alert('Успех', 'Файл выбран для импорта');
+                    }
+                  } catch (error) {
+                    Alert.alert('Ошибка', 'Не удалось выбрать файл');
+                  }
+                }}
+              >
+                <Text style={styles.fileButtonText}>Выбрать Excel/LibreOffice файл</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
+      
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
     </SafeAreaView>
   );
 }
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const isSmallScreen = screenWidth < 375;
+const scale = screenWidth / 375;
 
 const createStyles = (isDark: boolean) => StyleSheet.create({
   container: {
@@ -855,13 +931,13 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: Math.max(16, 20 * scale),
+    paddingVertical: Math.max(12, 16 * scale),
     borderBottomWidth: 1,
     borderBottomColor: isDark ? '#374151' : '#E5E7EB',
   },
   title: {
-    fontSize: 24,
+    fontSize: Math.max(20, 24 * scale),
     fontWeight: 'bold',
     color: isDark ? '#F9FAFB' : '#111827',
   },
@@ -874,13 +950,13 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
   },
   scrollContainer: {
-    padding: 20,
+    padding: Math.max(12, 20 * scale),
   },
   universityCard: {
     backgroundColor: isDark ? '#1F2937' : 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
+    borderRadius: Math.max(8, 12 * scale),
+    padding: Math.max(12, 16 * scale),
+    marginBottom: Math.max(12, 16 * scale),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -897,7 +973,7 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     flex: 1,
   },
   universityName: {
-    fontSize: 18,
+    fontSize: Math.max(16, 18 * scale),
     fontWeight: '600',
     color: isDark ? '#F9FAFB' : '#111827',
     marginBottom: 4,
@@ -942,21 +1018,23 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     fontWeight: '500',
   },
   programItem: {
-    flexDirection: 'row',
+    flexDirection: isSmallScreen ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
+    alignItems: isSmallScreen ? 'flex-start' : 'center',
+    paddingVertical: Math.max(6, 8 * scale),
     borderBottomWidth: 1,
     borderBottomColor: isDark ? '#374151' : '#F3F4F6',
+    gap: isSmallScreen ? 8 : 0,
   },
   programContent: {
     flex: 1,
   },
   programName: {
-    fontSize: 14,
+    fontSize: Math.max(13, 14 * scale),
     fontWeight: '500',
     color: isDark ? '#F9FAFB' : '#111827',
     marginBottom: 4,
+    flexWrap: 'wrap',
   },
   programMeta: {
     flexDirection: 'row',
@@ -964,8 +1042,9 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     alignItems: 'center',
   },
   programDetail: {
-    fontSize: 12,
+    fontSize: Math.max(11, 12 * scale),
     color: isDark ? '#9CA3AF' : '#6B7280',
+    flexWrap: 'wrap',
   },
   probabilityBadge: {
     paddingHorizontal: 8,
@@ -979,7 +1058,8 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   },
   programActions: {
     flexDirection: 'row',
-    gap: 4,
+    gap: Math.max(2, 4 * scale),
+    alignSelf: isSmallScreen ? 'flex-end' : 'auto',
   },
   noProgramsText: {
     fontSize: 14,
@@ -1032,7 +1112,7 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   },
   modalContent: {
     flex: 1,
-    padding: 20,
+    padding: Math.max(16, 20 * scale),
   },
   inputGroup: {
     marginBottom: 20,
@@ -1046,12 +1126,13 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   textInput: {
     borderWidth: 1,
     borderColor: isDark ? '#374151' : '#D1D5DB',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
+    borderRadius: Math.max(6, 8 * scale),
+    paddingHorizontal: Math.max(10, 12 * scale),
+    paddingVertical: Math.max(10, 12 * scale),
+    fontSize: Math.max(14, 16 * scale),
     color: isDark ? '#F9FAFB' : '#111827',
     backgroundColor: isDark ? '#1F2937' : 'white',
+    minHeight: Math.max(40, 48 * scale),
   },
   contractTypeContainer: {
     flexDirection: 'row',
@@ -1077,5 +1158,45 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   },
   contractTypeTextActive: {
     color: 'white',
+  },
+  importButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: Math.max(10, 12 * scale),
+    paddingHorizontal: Math.max(16, 20 * scale),
+    borderRadius: Math.max(6, 8 * scale),
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  importButtonText: {
+    color: 'white',
+    fontSize: Math.max(14, 16 * scale),
+    fontWeight: '600',
+  },
+  importUrlText: {
+    fontSize: Math.max(11, 12 * scale),
+    color: '#3B82F6',
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  fileButton: {
+    backgroundColor: isDark ? '#374151' : '#F3F4F6',
+    paddingVertical: Math.max(12, 16 * scale),
+    paddingHorizontal: Math.max(16, 20 * scale),
+    borderRadius: Math.max(6, 8 * scale),
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#10B981',
+    borderStyle: 'dashed',
+  },
+  fileButtonText: {
+    color: '#10B981',
+    fontSize: Math.max(14, 16 * scale),
+    fontWeight: '600',
+  },
+  helpText: {
+    fontSize: Math.max(11, 12 * scale),
+    color: isDark ? '#9CA3AF' : '#6B7280',
+    marginTop: 8,
+    lineHeight: Math.max(16, 18 * scale),
   },
 });

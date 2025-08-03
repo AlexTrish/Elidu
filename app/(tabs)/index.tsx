@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useColorScheme, } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useColorScheme, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, TrendingUp, Users, BookOpen } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -109,31 +109,36 @@ export default function HomeScreen() {
   );
 }
 
+const { width: screenWidth } = Dimensions.get('window');
+const scale = screenWidth / 375;
+const isSmallScreen = screenWidth < 375;
+
 const createStyles = (isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: isDark ? '#111827' : '#F9FAFB',
   },
   scrollContainer: {
-    padding: 20,
+    padding: Math.max(12, 20 * scale),
   },
   header: {
-    marginBottom: 30,
+    marginBottom: Math.max(20, 30 * scale),
   },
   title: {
-    fontSize: 32,
+    fontSize: Math.max(24, 32 * scale),
     fontWeight: 'bold',
     color: isDark ? '#F9FAFB' : '#111827',
-    marginBottom: 8,
+    marginBottom: Math.max(6, 8 * scale),
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: Math.max(14, 16 * scale),
     color: isDark ? '#9CA3AF' : '#6B7280',
   },
   statsGrid: {
-    flexDirection: 'row',
+    flexDirection: isSmallScreen ? 'column' : 'row',
     justifyContent: 'space-between',
-    marginBottom: 30,
+    marginBottom: Math.max(20, 30 * scale),
+    gap: isSmallScreen ? 12 : 0,
   },
   section: {
     marginBottom: 20,
@@ -165,9 +170,9 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   },
   programCard: {
     backgroundColor: isDark ? '#1F2937' : 'white',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: Math.max(8, 12 * scale),
+    padding: Math.max(12, 16 * scale),
+    marginBottom: Math.max(8, 12 * scale),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -181,24 +186,27 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     marginBottom: 12,
   },
   programName: {
-    fontSize: 16,
+    fontSize: Math.max(14, 16 * scale),
     fontWeight: '600',
     color: isDark ? '#F9FAFB' : '#111827',
     marginBottom: 4,
+    flexWrap: 'wrap',
   },
   universityName: {
     fontSize: 14,
     color: isDark ? '#9CA3AF' : '#6B7280',
   },
   programStats: {
-    flexDirection: 'row',
+    flexDirection: isSmallScreen ? 'column' : 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: Math.max(8, 12 * scale),
+    gap: isSmallScreen ? 4 : 0,
   },
   statText: {
-    fontSize: 12,
+    fontSize: Math.max(11, 12 * scale),
     color: isDark ? '#D1D5DB' : '#4B5563',
     fontWeight: '500',
+    flexWrap: 'wrap',
   },
   probabilityContainer: {
     alignItems: 'flex-end',

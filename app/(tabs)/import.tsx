@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Alert, useColorScheme } from 'react-native';
+import { Toast } from '../../components/Toast';
+import { useToast } from '../../hooks/useToast';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FileText, Link, Upload, Download, CircleCheck as CheckCircle, CircleAlert as AlertCircle } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -10,6 +12,7 @@ import { CrashLogger } from '../../services/crashLogger';
 export default function ImportScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const { toast, showToast, hideToast } = useToast();
   
   const [webUrl, setWebUrl] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -36,7 +39,7 @@ export default function ImportScreen() {
       // In a real app, you would use papaparse or similar to fetch and parse the data
       await new Promise(resolve => setTimeout(resolve, 2000));
       setImportStatus('success');
-      Alert.alert('Success', 'Data imported successfully!');
+      showToast('Данные успешно импортированы!');
     } catch (error) {
       CrashLogger.logError(error as Error, 'Web Import');
       setImportStatus('error');
@@ -84,7 +87,7 @@ export default function ImportScreen() {
       // For now, just show success
       setIsImporting(false);
       setImportStatus('success');
-      Alert.alert('Success', 'File imported successfully!');
+      showToast('Файл успешно импортирован!');
     } catch (error) {
       CrashLogger.logError(error as Error, 'File Import');
       setIsImporting(false);
@@ -101,7 +104,7 @@ export default function ImportScreen() {
         { text: 'Cancel', style: 'cancel' },
         { text: 'Export', onPress: () => {
           // Mock export
-          Alert.alert('Success', 'Data exported to Downloads folder');
+          showToast('Данные экспортированы!');
         }}
       ]
     );
@@ -210,6 +213,55 @@ export default function ImportScreen() {
           </View>
         )}
 
+        {/* User Data Import Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <FileText size={20} color="#8B5CF6" />
+            <Text style={styles.sectionTitle}>Импортировать данные другого пользователя</Text>
+          </View>
+          <Text style={styles.sectionDescription}>
+            Загрузите JSON файл с данными другого пользователя
+          </Text>
+          
+          <TouchableOpacity 
+            style={styles.fileImportButton}
+            onPress={async () => {
+              try {
+                const result = await DocumentPicker.getDocumentAsync({
+                  type: 'application/json',
+                  copyToCacheDirectory: true,
+                });
+                
+                if (result.type === 'cancel') return;
+                
+                const response = await fetch(result.assets[0].uri);
+                const jsonData = await response.json();
+                
+                if (jsonData.universities && jsonData.programs) {
+                  for (const uni of jsonData.universities) {
+                    await Database.addUniversity({
+                      id: Date.now().toString() + Math.random(),
+                      name: uni.name + ' (импорт)',
+                      url: uni.url
+                    });
+                  }
+                  
+                  showToast('Данные успешно импортированы!');
+                } else {
+                  showToast('Неверный формат файла', 'error');
+                }
+              } catch (error) {
+                showToast('Не удалось импортировать данные', 'error');
+              }
+            }}
+            disabled={isImporting}
+          >
+            <Upload size={24} color="#8B5CF6" />
+            <Text style={[styles.fileImportText, { color: '#8B5CF6' }]}>Выбрать JSON файл</Text>
+            <Text style={styles.fileImportSubtext}>JSON файлы поддерживаются</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Instructions */}
         <View style={styles.instructionsSection}>
           <Text style={styles.instructionsTitle}>Import Instructions</Text>
@@ -233,6 +285,13 @@ export default function ImportScreen() {
           </View>
         </View>
       </ScrollView>
+      
+      <Toast
+        visible={toast.visible}
+        message={toast.message}
+        type={toast.type}
+        onHide={hideToast}
+      />
     </SafeAreaView>
   );
 }
