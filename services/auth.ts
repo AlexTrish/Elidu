@@ -16,9 +16,12 @@ export interface User {
   email: string;
   name: string;
   picture?: string;
+  participantId?: string;
+  isGuest?: boolean;
 }
 
 const STORAGE_KEY = '@admission_tracker_user';
+const PARTICIPANT_ID_KEY = '@admission_tracker_participant_id';
 
 export class AuthService {
   private static user: User | null = null;
@@ -27,12 +30,47 @@ export class AuthService {
   static async initialize() {
     try {
       const userData = await AsyncStorage.getItem(STORAGE_KEY);
+      const participantId = await AsyncStorage.getItem(PARTICIPANT_ID_KEY);
       if (userData) {
-        this.user = JSON.parse(userData);
+        this.user = { ...JSON.parse(userData), participantId };
         this.notifyListeners();
       }
     } catch (error) {
       console.error('Error loading user data:', error);
+    }
+  }
+
+  static async continueAsGuest(participantId?: string) {
+    try {
+      const guestUser: User = {
+        id: 'guest_' + Date.now(),
+        email: 'guest@local',
+        name: 'Гость',
+        isGuest: true,
+        participantId,
+      };
+      
+      await this.setUser(guestUser);
+      if (participantId) {
+        await AsyncStorage.setItem(PARTICIPANT_ID_KEY, participantId);
+      }
+      return guestUser;
+    } catch (error) {
+      console.error('Error creating guest user:', error);
+      throw error;
+    }
+  }
+
+  static async updateParticipantId(participantId: string) {
+    try {
+      if (this.user) {
+        const updatedUser = { ...this.user, participantId };
+        await this.setUser(updatedUser);
+        await AsyncStorage.setItem(PARTICIPANT_ID_KEY, participantId);
+      }
+    } catch (error) {
+      console.error('Error updating participant ID:', error);
+      throw error;
     }
   }
 
@@ -43,6 +81,7 @@ export class AuthService {
   static async signOut() {
     try {
       await AsyncStorage.removeItem(STORAGE_KEY);
+      await AsyncStorage.removeItem(PARTICIPANT_ID_KEY);
       this.user = null;
       this.notifyListeners();
     } catch (error) {
@@ -75,7 +114,7 @@ export class AuthService {
 export const useGoogleAuth = () => {
   const [request, response, promptAsync] = useAuthRequest(
     {
-      clientId: process.env.EXPO_GOOGLE_CLIENT_ID,
+      clientId: '1234567890-abcdefghijklmnopqrstuvwxyz.apps.googleusercontent.com', // Replace with your actual client ID
       scopes: ['openid', 'profile', 'email'],
       redirectUri: makeRedirectUri({
         scheme: 'myapp',

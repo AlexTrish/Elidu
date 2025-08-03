@@ -22,6 +22,16 @@ export default function StatisticsScreen() {
   const programs = mockData.programs;
   const universities = mockData.universities;
   
+  // Обновляем расчеты для новой структуры данных
+  const programsWithChances = programs.filter(p => p.userPosition);
+  const averageProbability = programsWithChances.reduce((sum, p) => sum + (p.userPosition?.admissionChance || 0), 0) / programsWithChances.length || 0;
+  const highProbabilityCount = programsWithChances.filter(p => (p.userPosition?.admissionChance || 0) >= 70).length;
+  const mediumProbabilityCount = programsWithChances.filter(p => {
+    const chance = p.userPosition?.admissionChance || 0;
+    return chance >= 40 && chance < 70;
+  }).length;
+  const lowProbabilityCount = programsWithChances.filter(p => (p.userPosition?.admissionChance || 0) < 40).length;
+
   const styles = createStyles(isDark);
 
   const getUniversityName = (universityId: string) => {
@@ -47,22 +57,17 @@ export default function StatisticsScreen() {
   };
 
   // Mock historical data for demonstration
-  const historicalData = programs.map(program => ({
+  const historicalData = programsWithChances.map(program => ({
     ...program,
-    previousRank: program.currentRank + Math.floor(Math.random() * 10 - 5),
+    previousRank: (program.userPosition?.generalPosition || 0) + Math.floor(Math.random() * 10 - 5),
     rankChange: Math.floor(Math.random() * 10 - 5),
     probabilityChange: Math.floor(Math.random() * 20 - 10),
   }));
 
-  const averageProbability = programs.reduce((sum, p) => sum + p.probability, 0) / programs.length || 0;
-  const highProbabilityCount = programs.filter(p => p.probability >= 70).length;
-  const mediumProbabilityCount = programs.filter(p => p.probability >= 40 && p.probability < 70).length;
-  const lowProbabilityCount = programs.filter(p => p.probability < 40).length;
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Statistics</Text>
+        <Text style={styles.title}>Статистика</Text>
         <View style={styles.timeRangeSelector}>
           {(['7d', '30d', '90d'] as TimeRange[]).map((range) => (
             <TouchableOpacity
@@ -90,7 +95,7 @@ export default function StatisticsScreen() {
           <View style={styles.overviewCard}>
             <View style={styles.overviewHeader}>
               <Target size={20} color="#3B82F6" />
-              <Text style={styles.overviewLabel}>Average Chance</Text>
+              <Text style={styles.overviewLabel}>Средний шанс</Text>
             </View>
             <Text style={styles.overviewValue}>{Math.round(averageProbability)}%</Text>
           </View>
@@ -98,7 +103,7 @@ export default function StatisticsScreen() {
           <View style={styles.overviewCard}>
             <View style={styles.overviewHeader}>
               <TrendingUp size={20} color="#10B981" />
-              <Text style={styles.overviewLabel}>High Probability</Text>
+              <Text style={styles.overviewLabel}>Высокий шанс</Text>
             </View>
             <Text style={styles.overviewValue}>{highProbabilityCount}</Text>
           </View>
@@ -106,21 +111,21 @@ export default function StatisticsScreen() {
 
         {/* Probability Distribution */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Probability Distribution</Text>
+          <Text style={styles.sectionTitle}>Распределение вероятности</Text>
           <View style={styles.distributionContainer}>
             <View style={styles.distributionItem}>
               <View style={[styles.distributionIndicator, { backgroundColor: '#10B981' }]} />
-              <Text style={styles.distributionLabel}>High (70%+)</Text>
+              <Text style={styles.distributionLabel}>Высокий (70%+)</Text>
               <Text style={styles.distributionValue}>{highProbabilityCount}</Text>
             </View>
             <View style={styles.distributionItem}>
               <View style={[styles.distributionIndicator, { backgroundColor: '#F59E0B' }]} />
-              <Text style={styles.distributionLabel}>Medium (40-69%)</Text>
+              <Text style={styles.distributionLabel}>Средний (40-69%)</Text>
               <Text style={styles.distributionValue}>{mediumProbabilityCount}</Text>
             </View>
             <View style={styles.distributionItem}>
               <View style={[styles.distributionIndicator, { backgroundColor: '#EF4444' }]} />
-              <Text style={styles.distributionLabel}>Low (0-39%)</Text>
+              <Text style={styles.distributionLabel}>Низкий (0-39%)</Text>
               <Text style={styles.distributionValue}>{lowProbabilityCount}</Text>
             </View>
           </View>
@@ -128,7 +133,7 @@ export default function StatisticsScreen() {
 
         {/* Program Details */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Program Details</Text>
+          <Text style={styles.sectionTitle}>Детали программ</Text>
           {historicalData.map((program) => (
             <View key={program.id} style={styles.programCard}>
               <View style={styles.programHeader}>
@@ -138,14 +143,14 @@ export default function StatisticsScreen() {
                     {getUniversityName(program.universityId)}
                   </Text>
                 </View>
-                <ProbabilityIndicator probability={program.probability} />
+                <ProbabilityIndicator probability={program.userPosition?.admissionChance || 0} />
               </View>
 
               <View style={styles.programStats}>
                 <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Current Rank</Text>
+                  <Text style={styles.statLabel}>Текущая позиция</Text>
                   <View style={styles.statValueContainer}>
-                    <Text style={styles.statValue}>{program.currentRank}</Text>
+                    <Text style={styles.statValue}>{program.userPosition?.generalPosition || 'Н/Д'}</Text>
                     {getChangeIcon(program.rankChange)}
                     {program.rankChange !== 0 && (
                       <Text style={[
@@ -159,25 +164,20 @@ export default function StatisticsScreen() {
                 </View>
 
                 <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Originals Above</Text>
-                  <Text style={styles.statValue}>{program.originalsAbove}</Text>
+                  <Text style={styles.statLabel}>Позиция по приоритету</Text>
+                  <Text style={styles.statValue}>{program.userPosition?.priorityPosition || 'Н/Д'}</Text>
                 </View>
 
                 <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Available Seats</Text>
+                  <Text style={styles.statLabel}>Доступные места</Text>
                   <Text style={styles.statValue}>{program.budgetSeats}</Text>
-                </View>
-
-                <View style={styles.statItem}>
-                  <Text style={styles.statLabel}>Your Score</Text>
-                  <Text style={styles.statValue}>{program.examScore}</Text>
                 </View>
               </View>
 
               <View style={styles.probabilityDetails}>
                 <Text style={styles.probabilityDetailText}>
-                  Probability: <Text style={{ color: getProbabilityColor(program.probability) }}>
-                    {program.probability}% ({getProbabilityLabel(program.probability)})
+                  Вероятность: <Text style={{ color: getProbabilityColor(program.userPosition?.admissionChance || 0) }}>
+                    {program.userPosition?.admissionChance || 0}% ({getProbabilityLabel(program.userPosition?.admissionChance || 0)})
                   </Text>
                 </Text>
                 {program.probabilityChange !== 0 && (
@@ -185,18 +185,18 @@ export default function StatisticsScreen() {
                     styles.probabilityChange,
                     { color: program.probabilityChange > 0 ? '#10B981' : '#EF4444' }
                   ]}>
-                    {program.probabilityChange > 0 ? '+' : ''}{program.probabilityChange}% vs last update
+                    {program.probabilityChange > 0 ? '+' : ''}{program.probabilityChange}% к последнему обновлению
                   </Text>
                 )}
               </View>
             </View>
           ))}
 
-          {programs.length === 0 && (
+          {programsWithChances.length === 0 && (
             <View style={styles.emptyState}>
               <Calendar size={48} color={isDark ? '#6B7280' : '#9CA3AF'} />
-              <Text style={styles.emptyText}>No statistics available</Text>
-              <Text style={styles.emptySubtext}>Add programs to see detailed statistics</Text>
+              <Text style={styles.emptyText}>Статистика недоступна</Text>
+              <Text style={styles.emptySubtext}>Добавьте программы и импортируйте данные для просмотра статистики</Text>
             </View>
           )}
         </View>

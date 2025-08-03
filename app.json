@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "elidu",
-    "slug": "elidu",
+    "name": "bolt-expo-nativewind",
+    "slug": "bolt-expo-nativewind",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

@@ -79,12 +79,16 @@ export default function HomeScreen() {
                 </Text>
               </View>
               <View style={styles.programStats}>
-                <Text style={styles.statText}>{t('rank')}: {program.currentRank}</Text>
+                <Text style={styles.statText}>
+                  {t('rank')}: {program.userPosition?.generalPosition || 'Н/Д'}
+                </Text>
                 <Text style={styles.statText}>{t('seats')}: {program.budgetSeats}</Text>
-                <Text style={styles.statText}>{t('score')}: {program.examScore}</Text>
+                <Text style={styles.statText}>
+                  Шанс: {program.userPosition?.admissionChance || 0}%
+                </Text>
               </View>
               <View style={styles.probabilityContainer}>
-                <ProbabilityIndicator probability={program.probability} />
+                <ProbabilityIndicator probability={program.userPosition?.admissionChance || 0} />
               </View>
             </View>
           ))}

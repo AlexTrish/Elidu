@@ -4,11 +4,14 @@ import { AuthService, User } from '../services/auth';
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(AuthService.getCurrentUser());
   const [isLoading, setIsLoading] = useState(true);
+  const [requireAuth, setRequireAuth] = useState(false);
 
   useEffect(() => {
     const initializeAuth = async () => {
       await AuthService.initialize();
-      setUser(AuthService.getCurrentUser());
+      const currentUser = AuthService.getCurrentUser();
+      setUser(currentUser);
+      setRequireAuth(!currentUser);
       setIsLoading(false);
     };
 
@@ -16,6 +19,7 @@ export const useAuth = () => {
 
     const unsubscribe = AuthService.subscribe((newUser) => {
       setUser(newUser);
+      setRequireAuth(!newUser);
     });
 
     return unsubscribe;
@@ -23,11 +27,13 @@ export const useAuth = () => {
 
   const signOut = async () => {
     await AuthService.signOut();
+    setRequireAuth(true);
   };
 
   return {
     user,
     isLoading,
+    requireAuth,
     signOut,
     isAuthenticated: !!user,
   };

@@ -10,21 +10,11 @@ import {
   useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  Moon, 
-  Sun, 
-  Download, 
-  Bell, 
-  Info, 
-  Trash2, 
-  ChevronRight,
-  Shield,
-  Globe,
-  LogOut
-} from 'lucide-react-native';
+import { Moon, Sun, Download, Bell, Info, Trash2, ChevronRight, Shield, Globe, LogOut, User, CreditCard as Edit3 } from 'lucide-react-native';
 import { t } from '../../services/i18n';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
+import { AuthService } from '../../services/auth';
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme();
@@ -35,8 +25,20 @@ export default function SettingsScreen() {
   const [darkMode, setDarkMode] = useState(isDark);
   const [notifications, setNotifications] = useState(true);
   const [dailyUpdates, setDailyUpdates] = useState(false);
+  const [showParticipantIdModal, setShowParticipantIdModal] = useState(false);
+  const [participantIdInput, setParticipantIdInput] = useState(user?.participantId || '');
   
   const styles = createStyles(isDark);
+
+  const handleUpdateParticipantId = async () => {
+    try {
+      await AuthService.updateParticipantId(participantIdInput);
+      Alert.alert(t('success'), 'ID участника обновлен');
+      setShowParticipantIdModal(false);
+    } catch (error) {
+      Alert.alert(t('error'), 'Не удалось обновить ID участника');
+    }
+  };
 
   const handleExportData = () => {
     Alert.alert(
@@ -123,8 +125,37 @@ export default function SettingsScreen() {
           )}
         </View>
       </View>
+              {user.participantId && (
+                <Text style={styles.participantId}>
+                  ID участника: {user.participantId}
+                </Text>
+              )}
 
       <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {/* Profile Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Профиль</Text>
+          
+          <TouchableOpacity 
+            style={styles.actionItem} 
+            onPress={() => {
+              setParticipantIdInput(user?.participantId || '');
+              setShowParticipantIdModal(true);
+            }}
+          >
+            <View style={styles.settingInfo}>
+              <User size={20} color={isDark ? '#F9FAFB' : '#111827'} />
+              <View style={styles.settingText}>
+                <Text style={styles.settingLabel}>ID участника</Text>
+                <Text style={styles.settingDescription}>
+                  {user?.participantId || 'Не указан'}
+                </Text>
+              </View>
+            </View>
+            <Edit3 size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
+          </TouchableOpacity>
+        </View>
+
         {/* Language Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('language')}</Text>
@@ -261,21 +292,65 @@ export default function SettingsScreen() {
         </View>
 
         {/* Account Section */}
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.actionItem} onPress={handleSignOut}>
-            <View style={styles.settingInfo}>
-              <LogOut size={20} color="#EF4444" />
-              <View style={styles.settingText}>
-                <Text style={[styles.settingLabel, { color: '#EF4444' }]}>{t('signOut')}</Text>
-                <Text style={styles.settingDescription}>
-                  Sign out of your account
-                </Text>
+        {user && !user.isGuest && (
+          <View style={styles.section}>
+            <TouchableOpacity style={styles.actionItem} onPress={handleSignOut}>
+              <View style={styles.settingInfo}>
+                <LogOut size={20} color="#EF4444" />
+                <View style={styles.settingText}>
+                  <Text style={[styles.settingLabel, { color: '#EF4444' }]}>{t('signOut')}</Text>
+                  <Text style={styles.settingDescription}>
+                    Выйти из аккаунта Google
+                  </Text>
+                </View>
               </View>
-            </View>
-            <ChevronRight size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
-          </TouchableOpacity>
-        </View>
+              <ChevronRight size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
+
+      {/* Participant ID Modal */}
+      <Modal
+        visible={showParticipantIdModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        transparent={false}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity 
+              onPress={() => {
+                setShowParticipantIdModal(false);
+                setParticipantIdInput(user?.participantId || '');
+              }}
+            >
+              <Text style={styles.cancelButton}>Отмена</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>ID участника</Text>
+            <TouchableOpacity onPress={handleUpdateParticipantId}>
+              <Text style={styles.saveButton}>Сохранить</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalContent}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>ID участника</Text>
+              <Text style={styles.inputDescription}>
+                Укажите ваш уникальный ID участника для автоматического отслеживания позиции в списках поступления
+              </Text>
+              <TextInput
+                style={styles.textInput}
+                value={participantIdInput}
+                onChangeText={setParticipantIdInput}
+                placeholder="Введите ID участника"
+                placeholderTextColor={isDark ? '#6B7280' : '#9CA3AF'}
+                autoCapitalize="none"
+              />
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -310,6 +385,11 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   userEmail: {
     fontSize: 14,
     color: isDark ? '#9CA3AF' : '#6B7280',
+  },
+  participantId: {
+    fontSize: 12,
+    color: '#3B82F6',
+    fontWeight: '500',
   },
   scrollContainer: {
     padding: 20,
@@ -363,5 +443,60 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
   settingDescription: {
     fontSize: 12,
     color: isDark ? '#9CA3AF' : '#6B7280',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: isDark ? '#111827' : '#F9FAFB',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: isDark ? '#374151' : '#E5E7EB',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: isDark ? '#F9FAFB' : '#111827',
+  },
+  cancelButton: {
+    fontSize: 16,
+    color: isDark ? '#9CA3AF' : '#6B7280',
+  },
+  saveButton: {
+    fontSize: 16,
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+    padding: 20,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: isDark ? '#F9FAFB' : '#111827',
+  },
+  inputDescription: {
+    fontSize: 14,
+    color: isDark ? '#9CA3AF' : '#6B7280',
+    lineHeight: 20,
+  },
+  textInput: {
+    borderWidth: 1,
+    borderColor: isDark ? '#374151' : '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: isDark ? '#F9FAFB' : '#111827',
+    backgroundColor: isDark ? '#1F2937' : 'white',
+    marginTop: 8,
   },
 });

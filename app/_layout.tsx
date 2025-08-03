@@ -9,7 +9,7 @@ import { View, ActivityIndicator, useColorScheme } from 'react-native';
 
 export default function RootLayout() {
   useFrameworkReady();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, requireAuth } = useAuth();
   const { isLoading: langLoading } = useLanguage();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -27,7 +27,7 @@ export default function RootLayout() {
     );
   }
 
-  if (!user) {
+  if (!user && requireAuth) {
     return <AuthScreen />;
   }
 
