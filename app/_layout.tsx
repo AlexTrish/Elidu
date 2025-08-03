@@ -6,6 +6,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/hooks/useLanguage';
 import { AuthScreen } from '@/components/AuthScreen';
 import { View, ActivityIndicator, useColorScheme } from 'react-native';
+import React from 'react';
+import { CrashLogger } from '../services/crashLogger';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 export default function RootLayout() {
   useFrameworkReady();
@@ -13,6 +16,16 @@ export default function RootLayout() {
   const { isLoading: langLoading } = useLanguage();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+
+  useEffect(() => {
+    CrashLogger.init();
+    
+    const originalHandler = ErrorUtils.getGlobalHandler();
+    ErrorUtils.setGlobalHandler((error, isFatal) => {
+      CrashLogger.logError(error, isFatal ? 'FATAL' : 'NON_FATAL');
+      originalHandler(error, isFatal);
+    });
+  }, []);
 
   if (authLoading || langLoading) {
     return (
@@ -32,11 +45,11 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <ErrorBoundary>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />
-    </>
+    </ErrorBoundary>
   );
 }

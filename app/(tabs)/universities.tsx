@@ -8,6 +8,7 @@ import * as FileSystem from 'expo-file-system';
 import { t } from '../../services/i18n';
 import { AuthService } from '../../services/auth';
 import { Database } from '../../services/database';
+import { CrashLogger } from '../../services/crashLogger';
 
 interface University {
   id: string;
@@ -335,6 +336,7 @@ export default function UniversitiesScreen() {
       setImportSource(null);
       setImportingProgram(null);
     } catch (e) {
+      CrashLogger.logError(e as Error, 'Import Data');
       Alert.alert('Ошибка', 'Не удалось импортировать данные');
     }
   };
@@ -396,6 +398,7 @@ export default function UniversitiesScreen() {
       );
       Alert.alert('Успех', 'Данные успешно обновлены из Google таблицы');
     } catch (e) {
+      CrashLogger.logError(e as Error, 'Google Sheets Import');
       Alert.alert('Ошибка', 'Не удалось загрузить данные из Google таблицы');
     }
   };

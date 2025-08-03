@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Switch, Alert, useColorScheme, Modal, TextInput, Animated, Platform, Appearance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Moon, Sun, Download, Bell, Info, Trash2, ChevronRight, Shield, Globe, LogOut, User, CreditCard as Edit3 } from 'lucide-react-native';
+import { Moon, Sun, Download, Bell, Info, Trash2, ChevronRight, Shield, Globe, LogOut, User, CreditCard as Edit3, FileText } from 'lucide-react-native';
 import { t } from '../../services/i18n';
 import { useLanguage } from '../../hooks/useLanguage';
 import { useAuth } from '../../hooks/useAuth';
 import { AuthService } from '../../services/auth';
+import { CrashLogger } from '../../services/crashLogger';
 
 export default function SettingsScreen() {
   const systemColorScheme = useColorScheme();
@@ -21,6 +22,8 @@ export default function SettingsScreen() {
   const [participantIdInput, setParticipantIdInput] = useState(user?.participantId || '');
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showCrashLogModal, setShowCrashLogModal] = useState(false);
+  const [crashLog, setCrashLog] = useState('');
   const styles = createStyles(isDark);
 
   useEffect(() => {
@@ -74,6 +77,18 @@ export default function SettingsScreen() {
 
   const handleAbout = () => {
     setShowAboutModal(true);
+  };
+
+  const handleViewCrashLog = async () => {
+    const log = await CrashLogger.getCrashLog();
+    setCrashLog(log);
+    setShowCrashLogModal(true);
+  };
+
+  const handleClearCrashLog = async () => {
+    await CrashLogger.clearCrashLog();
+    setCrashLog('');
+    Alert.alert('Успех', 'Лог ошибок очищен');
   };
 
   const handleLanguageChange = () => {
@@ -243,6 +258,18 @@ export default function SettingsScreen() {
         {/* Data Management Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('dataManagement')}</Text>
+          <TouchableOpacity style={styles.actionItem} onPress={handleViewCrashLog}>
+            <View style={styles.settingInfo}>
+              <FileText size={20} color="#8B5CF6" />
+              <View style={styles.settingText}>
+                <Text style={styles.settingLabel}>Лог ошибок</Text>
+                <Text style={styles.settingDescription}>
+                  Просмотр и очистка логов ошибок приложения
+                </Text>
+              </View>
+            </View>
+            <ChevronRight size={16} color={isDark ? '#9CA3AF' : '#6B7280'} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.actionItem} onPress={handleExportData}>
             <View style={styles.settingInfo}>
               <Download size={20} color="#10B981" />
@@ -538,6 +565,31 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Crash Log Modal */}
+      <Modal
+        visible={showCrashLogModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowCrashLogModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowCrashLogModal(false)}>
+              <Text style={styles.cancelButton}>Закрыть</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Лог ошибок</Text>
+            <TouchableOpacity onPress={handleClearCrashLog}>
+              <Text style={[styles.saveButton, { color: '#EF4444' }]}>Очистить</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.modalContent}>
+            <Text style={[styles.crashLogText, { color: isDark ? '#F9FAFB' : '#111827' }]}>
+              {crashLog}
+            </Text>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -685,6 +737,12 @@ const createStyles = (isDark: boolean) => StyleSheet.create({
     color: isDark ? '#F9FAFB' : '#111827',
     backgroundColor: isDark ? '#1F2937' : 'white',
     marginTop: 8,
+  },
+  crashLogText: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+    lineHeight: 16,
+    padding: 16,
   },
 });
 

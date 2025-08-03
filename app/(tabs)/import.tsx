@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  useColorScheme,
-} from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, Alert, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FileText, Link, Upload, Download, CircleCheck as CheckCircle, CircleAlert as AlertCircle } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as XLSX from 'xlsx';
 import { Database } from '../../services/database';
+import { CrashLogger } from '../../services/crashLogger';
 
 export default function ImportScreen() {
   const colorScheme = useColorScheme();
@@ -46,6 +38,7 @@ export default function ImportScreen() {
       setImportStatus('success');
       Alert.alert('Success', 'Data imported successfully!');
     } catch (error) {
+      CrashLogger.logError(error as Error, 'Web Import');
       setImportStatus('error');
       Alert.alert('Error', 'Failed to import data. Please check the URL and try again.');
     } finally {
@@ -93,6 +86,7 @@ export default function ImportScreen() {
       setImportStatus('success');
       Alert.alert('Success', 'File imported successfully!');
     } catch (error) {
+      CrashLogger.logError(error as Error, 'File Import');
       setIsImporting(false);
       setImportStatus('error');
       Alert.alert('Error', 'Failed to import file. Please check the format and try again.');

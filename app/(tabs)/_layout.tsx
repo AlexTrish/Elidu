@@ -8,22 +8,7 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
-  // Обновлять табы при смене языка
   const [lang, setLang] = useState(getCurrentLanguage());
-  useEffect(() => {
-    const handler = () => setLang(getCurrentLanguage());
-    if (globalThis.i18next) {
-      globalThis.i18next.on('languageChanged', handler);
-      return () => globalThis.i18next.off('languageChanged', handler);
-    }
-    if (t && t.on) {
-      t.on('languageChanged', handler);
-      return () => t.off('languageChanged', handler);
-    }
-    // fallback for custom i18n
-    window.addEventListener('languageChanged', handler);
-    return () => window.removeEventListener('languageChanged', handler);
-  }, []);
 
   return (
     <Tabs

@@ -1,7 +1,7 @@
 {
   "name": "elidu",
   "main": "expo-router/entry",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
@@ -29,6 +29,7 @@
     "expo-router": "~5.1.4",
     "expo-sharing": "~13.1.5",
     "expo-splash-screen": "~0.30.10",
+    "expo-sqlite": "~15.2.14",
     "expo-status-bar": "~2.2.3",
     "expo-symbols": "~0.4.5",
     "expo-system-ui": "~5.0.10",
@@ -37,7 +38,7 @@
     "papaparse": "^5.5.3",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "react-native": "0.79.5",
+    "react-native": "^0.79.5",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
@@ -46,9 +47,7 @@
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "^0.20.0",
     "react-native-webview": "13.13.5",
-    "xlsx": "^0.18.5",
-    "expo-sqlite": "~15.2.14",
-    "expo-random": "undefined"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@babel/core": "^7.26.0",

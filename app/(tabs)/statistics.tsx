@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  useColorScheme,
-} from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, useColorScheme, } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TrendingUp, TrendingDown, Calendar, Target } from 'lucide-react-native';
 import { ProbabilityIndicator } from '../../components/ProbabilityIndicator';
