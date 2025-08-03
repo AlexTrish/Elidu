@@ -2,7 +2,7 @@
   "expo": {
     "name": "Elidu",
     "slug": "Elidu",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -24,6 +24,15 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "aad38c2c-44bb-4e13-8a68-3ffc8f431b9f"
+      }
+    },
+    "android": {
+      "package": "com.alextrish.Elidu"
     }
   }
 }
